@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 
-namespace Fuck {
+namespace Use_LinuxPipeline {
     public class Pipeline {
         [DllImport("libc.so.6", CallingConvention=CallingConvention.Cdecl)]
         public static extern int dup(int oldfd);
