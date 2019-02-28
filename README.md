@@ -14,11 +14,11 @@
 
 | bash | PowerShell (with Use-LinuxPipeline) |
 | --- | --- |
-| `base64 -d < file` | `stdin file | run base64 -d | 2ps` |
-| `cat foo > bar` | `run cat foo | out2 bar` |
-| `cat foo >> bar` | `run cat foo | add2 bar` |
-| `cat file | md5sum` | `run cat file | run md5sum | 2ps` |
-| `cat file | grep re` | `run cat BIGFILE | run grep re | stdout` |
+| `base64 -d < file` | `stdin file \| run base64 -d | 2ps` |
+| `cat foo > bar` | `run cat foo \| out2 bar` |
+| `cat foo >> bar` | `run cat foo |\ add2 bar` |
+| `cat file \| md5sum` | `run cat file | run md5sum \| 2ps` |
+| `cat file \| grep re` | `run cat BIGFILE \| run grep re \| stdout` |
 
 2ps 和 stdout 的区别:
 
