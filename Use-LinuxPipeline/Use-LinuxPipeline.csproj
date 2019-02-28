@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Management.Automation">
+      <HintPath>..\..\..\..\..\..\opt\microsoft\powershell\6\System.Management.Automation.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
