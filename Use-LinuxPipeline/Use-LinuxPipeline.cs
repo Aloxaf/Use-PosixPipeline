@@ -10,6 +10,8 @@ namespace Use_LinuxPipeline
 {
     #region ForkProcess
     [Cmdlet("Fork", "Process")]
+    [Alias("run")]
+    [OutputType(typeof(int))]
     public class ForkProcess : PSCmdlet
     {
         [Parameter(
@@ -34,9 +36,11 @@ namespace Use_LinuxPipeline
 
     #region PipeToPS
     [Cmdlet("PipeTo", "PS")]
+    [Alias("2ps")]
     public class PipeToPS : PSCmdlet
     {
         [Parameter(Mandatory = true, ValueFromPipeline = true)]
+        [ValidateNotNullOrEmpty]
         public int[] Pipes { get; set; }
 
         protected override void ProcessRecord()
@@ -48,12 +52,15 @@ namespace Use_LinuxPipeline
 
     #region PipeOverwrite-File
     [Cmdlet("PipeOverwrite", "File")]
+    [Alias("out2")]
     public class PipOverwriteFile : PSCmdlet
     {
         [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
         public string Filename { get; set; }
 
         [Parameter(Mandatory = true, ValueFromPipeline = true)]
+        [ValidateNotNullOrEmpty]
         public int[] Pipes { get; set; }
 
         protected override void ProcessRecord()
@@ -67,12 +74,15 @@ namespace Use_LinuxPipeline
 
     #region PipeAppend-File
     [Cmdlet("PipeAppend", "File")]
+    [Alias("add2")]
     public class PipeAppend : PSCmdlet
     {
         [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
         public string Filename { get; set; }
 
         [Parameter(Mandatory = true, ValueFromPipeline = true)]
+        [ValidateNotNullOrEmpty]
         public int[] Pipes { get; set; }
 
         protected override void ProcessRecord()
@@ -86,9 +96,12 @@ namespace Use_LinuxPipeline
 
     #region PipeFrom-File
     [Cmdlet("PipeFrom", "File")]
+    [Alias("stdin")]
+    [OutputType(typeof(int))]
     public class PipeFromFile : PSCmdlet
     {
         [Parameter(Mandatory = true, Position = 0)]
+        [ValidateNotNullOrEmpty]
         public string Filename { get; set; }
 
         protected override void ProcessRecord()
@@ -100,9 +113,11 @@ namespace Use_LinuxPipeline
 
     #region PipeTo-Console
     [Cmdlet("PipeTo", "Console")]
+    [Alias("stdout")]
     public class PipeToConsole : PSCmdlet
     {
         [Parameter(Mandatory = true, ValueFromPipeline = true)]
+        [ValidateNotNullOrEmpty]
         public int[] Pipes { get; set; }
 
         protected override void ProcessRecord()
@@ -114,6 +129,7 @@ namespace Use_LinuxPipeline
     }
     #endregion PipeTo-Console
 
+    #region core
     public static class Core
     {
         [DllImport("libc.so.6", CallingConvention = CallingConvention.Cdecl)]
@@ -260,4 +276,5 @@ namespace Use_LinuxPipeline
             dup2(stdin_bak, 0);
         }
     }
+    #endregion core
 }

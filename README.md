@@ -28,13 +28,3 @@
 和 Use-RawPipeline 的区别:
 
 - `run xxx` 即使后面不接 `| 2ps`, `| run xxx` 之类的命令也会执行
-
-## 安装 (outdated)
-
-因为还没经过充分测试所以只能这样安装
-
-```bash
-git clone "https://github.com/Aloxaf/Use-LinuxPipeline"
-cp -r ./Use-LinuxPipeline ~/.local/share/powershell/Modules/Use-LinuxPipeline
-pwsh -c "Import-Module -Name Use-LinuxPipeline"
-```
