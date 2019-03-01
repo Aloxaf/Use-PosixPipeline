@@ -50,9 +50,17 @@ namespace Use_LinuxPipeline
 
         protected override void ProcessRecord()
         {
-            // 好像会自动恢复
-            Directory.SetCurrentDirectory(WorkingDirectory);
+            string pwd = Directory.GetCurrentDirectory();
+            if (WorkingDirectory == ".")
+            {
+                Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
+            }
+            else
+            {
+                Directory.SetCurrentDirectory(WorkingDirectory);
+            }
             WriteObject(Core.Run(Pipes, Argv, pipeerror, ErrorFile, appenderror));
+            Directory.SetCurrentDirectory(pwd);
         }
     }
 
@@ -64,10 +72,10 @@ namespace Use_LinuxPipeline
         [ValidateNotNullOrEmpty]
         public int[] Pipes { get; set; }
 
-        [Parameter(Mandatory = false, Position = 0)]
+        [Parameter(Position = 0)]
         public string Encoding { get; set; } = "UTF-8";
 
-        [Parameter(Mandatory = false)]
+        [Parameter]
         public SwitchParameter Raw
         {
             get => raw;
@@ -106,9 +114,13 @@ namespace Use_LinuxPipeline
 
         protected override void ProcessRecord()
         {
+            string pwd = Directory.GetCurrentDirectory();
+            Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
+            // WriteObject(SessionState.Path.CurrentFileSystemLocation);
             Stream fs = new FileStream(Filename, FileMode.Create, FileAccess.Write);
             Core.WriteToStream(Pipes, fs);
             fs.Close();
+            Directory.SetCurrentDirectory(pwd);
         }
     }
 
@@ -126,9 +138,12 @@ namespace Use_LinuxPipeline
 
         protected override void ProcessRecord()
         {
+            string pwd = Directory.GetCurrentDirectory();
+            Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
             Stream fs = new FileStream(Filename, FileMode.Append);
             Core.WriteToStream(Pipes, fs);
             fs.Close();
+            Directory.SetCurrentDirectory(pwd);
         }
     }
 
@@ -143,7 +158,10 @@ namespace Use_LinuxPipeline
 
         protected override void ProcessRecord()
         {
+            string pwd = Directory.GetCurrentDirectory();
+            Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
             WriteObject(Core.ReadFile(Filename));
+            Directory.SetCurrentDirectory(pwd);
         }
     }
     #endregion cmdlets
