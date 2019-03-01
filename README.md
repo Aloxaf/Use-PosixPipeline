@@ -8,23 +8,20 @@
 
 ## 原理
 
-调用 Linux 库函数 pipe 实现管道, pwsh 的管道只用来传递文件描述符. (简单粗暴
+调用 Linux 库函数 pipe 创建管道, 用 execvp 创建进程, 用 dup2 重定向输入输出
 
-## 用法 (基本和 Use-RawPipeline 一样)
+pwsh 的管道只用来传递文件描述符. (简单粗暴
+
+## 用法 (兼容大部分 Use-RawPipeline 参数)
 
 | bash | PowerShell (with Use-LinuxPipeline) |
 | --- | --- |
-| `base64 -d < file` | `stdin file \| run base64 -d | 2ps` |
-| `cat foo > bar` | `run cat foo \| out2 bar` |
-| `cat foo >> bar` | `run cat foo |\ add2 bar` |
-| `cat file \| md5sum` | `run cat file | run md5sum \| 2ps` |
-| `cat file \| grep re` | `run cat BIGFILE \| run grep re \| stdout` |
-
-2ps 和 stdout 的区别:
-
-- 2ps 会等待所有输出完成后返回, 而且输出可以被捕获
-- stdout 会实时输出, 但输出不可以被捕获
+| `git commit-tree 01d1 -p HEAD < msg` | `stdin msg \| run git commit-tree 01d1 -p HEAD \| 2ps` |
+| `git show HEAD:README.md > temp` | `run git show HEAD:README.md \| out2 temp` |
+| `git cat-file blob b428 >> temp` | `run git cat-file blob b428 \| add2 temp` |
+| `git cat-file blob b428 \| xxd` | `run git cat-file blob b428 \| run xxd \| 2ps` |
 
 和 Use-RawPipeline 的区别:
 
 - `run xxx` 即使后面不接 `| 2ps`, `| run xxx` 之类的命令也会执行
+- `run` 增加了 `-PipeError` 开关, 相当于 `2>&1`

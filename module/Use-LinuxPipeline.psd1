@@ -72,13 +72,13 @@ PowerShellVersion = '6.0'
 FunctionsToExport = @()
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-CmdletsToExport = @('Fork-Process', 'PipeTo-PS', 'PipeOverwrite-File', 'PipeAppend-File', 'PipeFrom-File', 'PipeTo-Console')
+CmdletsToExport = @('Invoke-NativeCommand', 'Receive-RawPipeline', 'Get-RawPipelineFromFile', 'Set-RawPipelineToFile', 'Add-RawPipelineToFile')
 
 # Variables to export from this module
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('run', '2ps' , 'stdin', 'stdout', 'out2', 'add2')
+AliasesToExport = @('run', '2ps' , 'stdin', 'out2', 'add2')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()

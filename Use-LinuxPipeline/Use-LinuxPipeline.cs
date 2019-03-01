@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Management.Automation;
 
 namespace Use_LinuxPipeline
 {
-    #region ForkProcess
-    [Cmdlet("Fork", "Process")]
+    #region cmdlets
+    [Cmdlet(VerbsLifecycle.Invoke, "NativeCommand")]
     [Alias("run")]
     [OutputType(typeof(int))]
-    public class ForkProcess : PSCmdlet
+    public class InvokeNativeCommand : PSCmdlet
     {
         [Parameter(
             Mandatory = true,
@@ -22,38 +22,79 @@ namespace Use_LinuxPipeline
         [ValidateNotNullOrEmpty]
         public string[] Argv { get; set; }
 
-        [Parameter(
-            ValueFromPipeline = true
-        )]
-        public int[] Pipes { get; set; } = null;
+        [Parameter]
+        public string WorkingDirectory { get; set; } = ".";
+
+        [Parameter(ValueFromPipeline = true)]
+        public int[] Pipes { get; set; } = null; // TODO: int[] -> int
+
+        [Parameter]
+        [ValidateNotNullOrEmpty]
+        public string ErrorFile { get; set; }
+
+        [Parameter]
+        public SwitchParameter AppendError
+        {
+            get => appenderror;
+            set => appenderror = value;
+        }
+        private bool appenderror;
+
+        [Parameter]
+        public SwitchParameter PipeError
+        {
+            get => pipeerror;
+            set => pipeerror = value;
+        }
+        private bool pipeerror;
 
         protected override void ProcessRecord()
         {
-            WriteObject(Core.Run(Pipes, Argv));
+            // 好像会自动恢复
+            Directory.SetCurrentDirectory(WorkingDirectory);
+            WriteObject(Core.Run(Pipes, Argv, pipeerror, ErrorFile, appenderror));
         }
     }
-    #endregion ForkProcess
 
-    #region PipeToPS
-    [Cmdlet("PipeTo", "PS")]
+    [Cmdlet(VerbsCommunications.Receive, "RawPipeline")]
     [Alias("2ps")]
-    public class PipeToPS : PSCmdlet
+    public class ReceiveRawPipeline : PSCmdlet
     {
         [Parameter(Mandatory = true, ValueFromPipeline = true)]
         [ValidateNotNullOrEmpty]
         public int[] Pipes { get; set; }
 
+        [Parameter(Mandatory = false, Position = 0)]
+        public string Encoding { get; set; } = "UTF-8";
+
+        [Parameter(Mandatory = false)]
+        public SwitchParameter Raw
+        {
+            get => raw;
+            set => raw = value;
+        }
+        private bool raw;
+
         protected override void ProcessRecord()
         {
-            WriteObject(Core.GetOutputAsString(Pipes));
+            if (raw)
+            {
+                WriteObject(Core.GetOutputAsBytes(Pipes).ToArray());
+            }
+            else
+            {
+                Encoding encoding = System.Text.Encoding.GetEncoding(Encoding);
+                foreach (string s in Core.GetOutputAsString(Pipes, encoding))
+                {
+                    WriteObject(s);
+                }
+            }
         }
     }
-    #endregion PipeToPS
 
-    #region PipeOverwrite-File
-    [Cmdlet("PipeOverwrite", "File")]
+    [Cmdlet(VerbsCommon.Set, "RawPipelineToFile")]
     [Alias("out2")]
-    public class PipOverwriteFile : PSCmdlet
+    public class SetRawPipelineToFile : PSCmdlet
     {
         [Parameter(Mandatory = true, Position = 0)]
         [ValidateNotNullOrEmpty]
@@ -70,12 +111,10 @@ namespace Use_LinuxPipeline
             fs.Close();
         }
     }
-    #endregion PipeOverwrite-File
 
-    #region PipeAppend-File
-    [Cmdlet("PipeAppend", "File")]
+    [Cmdlet(VerbsCommon.Add, "RawPipelineToFile")]
     [Alias("add2")]
-    public class PipeAppend : PSCmdlet
+    public class AddRawPipelineToFile : PSCmdlet
     {
         [Parameter(Mandatory = true, Position = 0)]
         [ValidateNotNullOrEmpty]
@@ -92,13 +131,11 @@ namespace Use_LinuxPipeline
             fs.Close();
         }
     }
-    #endregion PipeAppend-File
 
-    #region PipeFrom-File
-    [Cmdlet("PipeFrom", "File")]
+    [Cmdlet(VerbsCommon.Get, "RawPipelineFromFile")]
     [Alias("stdin")]
     [OutputType(typeof(int))]
-    public class PipeFromFile : PSCmdlet
+    public class GetRawPipelineFromFile : PSCmdlet
     {
         [Parameter(Mandatory = true, Position = 0)]
         [ValidateNotNullOrEmpty]
@@ -109,29 +146,11 @@ namespace Use_LinuxPipeline
             WriteObject(Core.ReadFile(Filename));
         }
     }
-    #endregion PipeFrom-File
+    #endregion cmdlets
 
-    #region PipeTo-Console
-    [Cmdlet("PipeTo", "Console")]
-    [Alias("stdout")]
-    public class PipeToConsole : PSCmdlet
-    {
-        [Parameter(Mandatory = true, ValueFromPipeline = true)]
-        [ValidateNotNullOrEmpty]
-        public int[] Pipes { get; set; }
-
-        protected override void ProcessRecord()
-        {
-            Stream stdout = Console.OpenStandardOutput();
-            Core.WriteToStream(Pipes, stdout);
-            stdout.Close();
-        }
-    }
-    #endregion PipeTo-Console
-
-    #region core
     public static class Core
     {
+        #region dllimport
         [DllImport("libc.so.6", CallingConvention = CallingConvention.Cdecl)]
         private static extern int dup(int oldfd);
 
@@ -162,7 +181,9 @@ namespace Use_LinuxPipeline
         [DllImport("libc.so.6", CallingConvention = CallingConvention.Cdecl)]
         private static extern void _exit(int status);
 
-        public static int[] Run(int[] pipe_in, string[] cmd)
+        #endregion dllimport
+
+        public static int[] Run(int[] pipe_in, string[] cmd, bool pipe_error, string error_file, bool append_error)
         {
             int[] pipe_out = new int[2];
             if (pipe(pipe_out) == -1)
@@ -191,12 +212,48 @@ namespace Use_LinuxPipeline
                 close(pipe_out[1]);
                 close(pipe_out[0]);
 
+                int stderr_bak = dup(2);
+                if (pipe_error)
+                {
+                    dup2(1, 2);
+                }
+                else if (error_file != null)
+                {
+                    int fd;
+                    if (append_error)
+                    {
+                        if ((fd = open(error_file, 1 | 64 | 1024)) == -1) // O_WRONLY | O_CREAT | O_APPEND
+                        {
+                            perror("error with open(append mode)");
+                            _exit(1);
+                        }
+                    }
+                    else
+                    {
+                        if ((fd = open(error_file, 1 | 64)) == -1)
+                        {
+                            perror("error with open(overwrite mode)");
+                            _exit(1);
+                        }
+                    }
+                    dup2(fd, 2);
+                    close(fd);
+                }
+
                 string[] argv = new string[cmd.Length + 1];
                 cmd.CopyTo(argv, 0);
                 argv[cmd.Length] = null;
 
-                execvp(argv[0], argv);
-                perror("there is something wrong with execlp");
+                if (execvp(argv[0], argv) == -1)
+                {
+                    perror("there is something wrong with execlp");
+                }
+
+                if (append_error || error_file != null)
+                {
+                    dup2(stderr_bak, 2);
+                }
+
                 _exit(1);
             }
 
@@ -234,26 +291,45 @@ namespace Use_LinuxPipeline
             close(pipe_in[1]);
 
             Stream stdin = Console.OpenStandardInput();
-            // Stream stdout = Console.OpenStandardOutput();
-            byte[] buffer = new byte[512];
+
+            // 早点恢复, 避免 Ctrl + C 终止的时候造成 stdin 挂掉
+            dup2(stdin_bak, 0);
+
+            byte[] buf = new byte[512];
             int count;
-            while ((count = stdin.Read(buffer, 0, buffer.Length)) > 0)
+            while ((count = stdin.Read(buf, 0, buf.Length)) > 0)
             {
-                for (int i = 0; i != count; i++)
+                for (int i = 0; i < count; i++)
                 {
-                    // stdout.Write(buffer, 0, count);
-                    yield return buffer[i];
+                    yield return buf[i];
                 }
             }
 
-            dup2(stdin_bak, 0);
+            stdin.Close();
         }
 
-        public static string GetOutputAsString(int[] pipe_in)
+        public static IEnumerable<string> GetOutputAsString(int[] pipe_in, Encoding encoding)
         {
-            byte[] bytes = GetOutputAsBytes(pipe_in).ToArray();
-            string s = Encoding.Default.GetString(bytes);
-            return s.Remove(s.Length - 1, 1);
+            int stdin_bak = dup(0);
+
+            dup2(pipe_in[0], 0);
+            close(pipe_in[0]);
+            close(pipe_in[1]);
+
+            Stream stdin = Console.OpenStandardInput();
+            StreamReader reader = new StreamReader(stdin, encoding);
+
+            // 早点恢复, 避免 Ctrl + C 终止的时候造成 stdin 挂掉
+            dup2(stdin_bak, 0);
+
+            string s;
+            while ((s = reader.ReadLine()) != null)
+            {
+                yield return s;
+            }
+
+            reader.Close();
+            stdin.Close();
         }
 
         public static void WriteToStream(int[] pipe_in, Stream stream)
@@ -265,7 +341,9 @@ namespace Use_LinuxPipeline
             close(pipe_in[1]);
 
             Stream stdin = Console.OpenStandardInput();
-            // Stream stdout = Console.OpenStandardOutput();
+
+            dup2(stdin_bak, 0);
+
             byte[] buffer = new byte[512];
             int count;
             while ((count = stdin.Read(buffer, 0, buffer.Length)) > 0)
@@ -273,8 +351,7 @@ namespace Use_LinuxPipeline
                 stream.Write(buffer, 0, count);
             }
 
-            dup2(stdin_bak, 0);
+            stdin.Close();
         }
     }
-    #endregion core
 }
