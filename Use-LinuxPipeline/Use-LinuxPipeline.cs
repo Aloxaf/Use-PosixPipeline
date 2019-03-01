@@ -26,7 +26,7 @@ namespace Use_LinuxPipeline
         public string WorkingDirectory { get; set; } = ".";
 
         [Parameter(ValueFromPipeline = true)]
-        public int[] Pipes { get; set; } = null; // TODO: int[] -> int
+        public int Pipes { get; set; } = -1;
 
         [Parameter]
         [ValidateNotNullOrEmpty]
@@ -70,7 +70,7 @@ namespace Use_LinuxPipeline
     {
         [Parameter(Mandatory = true, ValueFromPipeline = true)]
         [ValidateNotNullOrEmpty]
-        public int[] Pipes { get; set; }
+        public int Pipes { get; set; }
 
         [Parameter(Position = 0)]
         public string Encoding { get; set; } = "UTF-8";
@@ -110,7 +110,7 @@ namespace Use_LinuxPipeline
 
         [Parameter(Mandatory = true, ValueFromPipeline = true)]
         [ValidateNotNullOrEmpty]
-        public int[] Pipes { get; set; }
+        public int Pipes { get; set; }
 
         protected override void ProcessRecord()
         {
@@ -134,7 +134,7 @@ namespace Use_LinuxPipeline
 
         [Parameter(Mandatory = true, ValueFromPipeline = true)]
         [ValidateNotNullOrEmpty]
-        public int[] Pipes { get; set; }
+        public int Pipes { get; set; }
 
         protected override void ProcessRecord()
         {
@@ -201,7 +201,7 @@ namespace Use_LinuxPipeline
 
         #endregion dllimport
 
-        public static int[] Run(int[] pipe_in, string[] cmd, bool pipe_error, string error_file, bool append_error)
+        public static int Run(int pipe_in, string[] cmd, bool pipe_error, string error_file, bool append_error)
         {
             int[] pipe_out = new int[2];
             if (pipe(pipe_out) == -1)
@@ -219,11 +219,10 @@ namespace Use_LinuxPipeline
             else if (pid == 0)
             {
                 // set input
-                if (pipe_in != null)
+                if (pipe_in != -1)
                 {
-                    dup2(pipe_in[0], 0);
-                    close(pipe_in[0]);
-                    close(pipe_in[1]);
+                    dup2(pipe_in, 0);
+                    close(pipe_in);
                 }
                 // set output
                 dup2(pipe_out[1], 1);
@@ -275,16 +274,16 @@ namespace Use_LinuxPipeline
                 _exit(1);
             }
 
-            if (pipe_in != null)
+            if (pipe_in != -1)
             {
-                close(pipe_in[0]);
-                close(pipe_in[1]);
+                close(pipe_in);
             }
 
-            return pipe_out;
+            close(pipe_out[1]);
+            return pipe_out[0];
         }
 
-        public static int[] ReadFile(string filename)
+        public static int ReadFile(string filename)
         {
             int[] pipe_out = new int[2];
             if (pipe(pipe_out) == -1)
@@ -297,16 +296,16 @@ namespace Use_LinuxPipeline
             dup2(fd, pipe_out[0]);
             close(fd);
 
-            return pipe_out;
+            close(pipe_out[1]);
+            return pipe_out[0];
         }
 
-        public static IEnumerable<byte> GetOutputAsBytes(int[] pipe_in)
+        public static IEnumerable<byte> GetOutputAsBytes(int pipe_in)
         {
             int stdin_bak = dup(0);
 
-            dup2(pipe_in[0], 0);
-            close(pipe_in[0]);
-            close(pipe_in[1]);
+            dup2(pipe_in, 0);
+            close(pipe_in);
 
             Stream stdin = Console.OpenStandardInput();
 
@@ -326,13 +325,12 @@ namespace Use_LinuxPipeline
             stdin.Close();
         }
 
-        public static IEnumerable<string> GetOutputAsString(int[] pipe_in, Encoding encoding)
+        public static IEnumerable<string> GetOutputAsString(int pipe_in, Encoding encoding)
         {
             int stdin_bak = dup(0);
 
-            dup2(pipe_in[0], 0);
-            close(pipe_in[0]);
-            close(pipe_in[1]);
+            dup2(pipe_in, 0);
+            close(pipe_in);
 
             Stream stdin = Console.OpenStandardInput();
             StreamReader reader = new StreamReader(stdin, encoding);
@@ -350,13 +348,12 @@ namespace Use_LinuxPipeline
             stdin.Close();
         }
 
-        public static void WriteToStream(int[] pipe_in, Stream stream)
+        public static void WriteToStream(int pipe_in, Stream stream)
         {
             int stdin_bak = dup(0);
 
-            dup2(pipe_in[0], 0);
-            close(pipe_in[0]);
-            close(pipe_in[1]);
+            dup2(pipe_in, 0);
+            close(pipe_in);
 
             Stream stdin = Console.OpenStandardInput();
 
