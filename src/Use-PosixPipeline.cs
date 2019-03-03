@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Management.Automation;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -87,7 +86,10 @@ namespace UsePosixPipeline
         {
             if (raw)
             {
-                WriteObject(Linux.GetOutputAsBytes(Pipes).ToArray());
+                // NOTE:
+                // 此处省略了 ToArray(), 所以返回的对象被消耗一次后就没了
+                // 第二次尝试迭代就会卡住
+                WriteObject(Linux.GetOutputAsBytes(Pipes));
             }
             else
             {
@@ -116,10 +118,10 @@ namespace UsePosixPipeline
         {
             string pwd = Directory.GetCurrentDirectory();
             Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
-            // WriteObject(SessionState.Path.CurrentFileSystemLocation);
-            Stream fs = new FileStream(Filename, FileMode.Create, FileAccess.Write);
-            Linux.WriteToStream(Pipes, fs);
-            fs.Close();
+            using (Stream stream = new FileStream(Filename, FileMode.Create, FileAccess.Write))
+            {
+                Linux.WriteToStream(Pipes, stream);
+            }
             Directory.SetCurrentDirectory(pwd);
         }
     }
@@ -140,9 +142,10 @@ namespace UsePosixPipeline
         {
             string pwd = Directory.GetCurrentDirectory();
             Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
-            Stream fs = new FileStream(Filename, FileMode.Append);
-            Linux.WriteToStream(Pipes, fs);
-            fs.Close();
+            using (Stream stream = new FileStream(Filename, FileMode.Append))
+            {
+                Linux.WriteToStream(Pipes, stream);
+            }
             Directory.SetCurrentDirectory(pwd);
         }
     }
