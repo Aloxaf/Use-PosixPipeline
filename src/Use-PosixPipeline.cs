@@ -6,7 +6,7 @@ using System.Management.Automation;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Use_PosixPipeline
+namespace UsePosixPipeline
 {
     #region cmdlets
     [Cmdlet(VerbsLifecycle.Invoke, "NativeCommand")]

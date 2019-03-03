@@ -12,7 +12,7 @@
 
 pwsh 的管道只用来传递文件描述符. (简单粗暴
 
-## 用法 (兼容大部分 Use-RawPipeline 参数)
+## 基本用法 (兼容大部分 Use-RawPipeline 参数)
 
 | bash | PowerShell (with Use-PosixPipeline) |
 | --- | --- |
@@ -25,3 +25,4 @@ pwsh 的管道只用来传递文件描述符. (简单粗暴
 
 - `run xxx` 即使后面不接 `| 2ps`, `| run xxx` 之类的命令也会执行
 - `run` 增加了 `-PipeError` 开关, 相当于 `2>&1`
+- `2ps` 只有 `-Encoding` 开关, 去掉了 `-CommonEncoding` 开关, 且默认 UTF-8
