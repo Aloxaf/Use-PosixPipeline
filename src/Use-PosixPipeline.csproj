@@ -8,5 +8,8 @@
     <Reference Include="System.Management.Automation">
       <HintPath>..\..\..\..\..\..\opt\microsoft\powershell\6\System.Management.Automation.dll</HintPath>
     </Reference>
+    <Reference Include="Mono.Posix">
+      <HintPath>..\..\..\..\..\..\usr\lib\mono\4.7.2-api\Mono.Posix.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

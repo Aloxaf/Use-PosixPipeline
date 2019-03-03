@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Management.Automation;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Management.Automation;
 
-namespace Use_LinuxPipeline
+namespace Use_PosixPipeline
 {
     #region cmdlets
     [Cmdlet(VerbsLifecycle.Invoke, "NativeCommand")]
@@ -59,7 +59,7 @@ namespace Use_LinuxPipeline
             {
                 Directory.SetCurrentDirectory(WorkingDirectory);
             }
-            WriteObject(Core.Run(Pipes, Argv, pipeerror, ErrorFile, appenderror));
+            WriteObject(Linux.Run(Pipes, Argv, pipeerror, ErrorFile, appenderror));
             Directory.SetCurrentDirectory(pwd);
         }
     }
@@ -87,12 +87,12 @@ namespace Use_LinuxPipeline
         {
             if (raw)
             {
-                WriteObject(Core.GetOutputAsBytes(Pipes).ToArray());
+                WriteObject(Linux.GetOutputAsBytes(Pipes).ToArray());
             }
             else
             {
                 Encoding encoding = System.Text.Encoding.GetEncoding(Encoding);
-                foreach (string s in Core.GetOutputAsString(Pipes, encoding))
+                foreach (string s in Linux.GetOutputAsString(Pipes, encoding))
                 {
                     WriteObject(s);
                 }
@@ -118,7 +118,7 @@ namespace Use_LinuxPipeline
             Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
             // WriteObject(SessionState.Path.CurrentFileSystemLocation);
             Stream fs = new FileStream(Filename, FileMode.Create, FileAccess.Write);
-            Core.WriteToStream(Pipes, fs);
+            Linux.WriteToStream(Pipes, fs);
             fs.Close();
             Directory.SetCurrentDirectory(pwd);
         }
@@ -141,7 +141,7 @@ namespace Use_LinuxPipeline
             string pwd = Directory.GetCurrentDirectory();
             Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
             Stream fs = new FileStream(Filename, FileMode.Append);
-            Core.WriteToStream(Pipes, fs);
+            Linux.WriteToStream(Pipes, fs);
             fs.Close();
             Directory.SetCurrentDirectory(pwd);
         }
@@ -160,13 +160,13 @@ namespace Use_LinuxPipeline
         {
             string pwd = Directory.GetCurrentDirectory();
             Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
-            WriteObject(Core.ReadFile(Filename));
+            WriteObject(Linux.ReadFile(Filename));
             Directory.SetCurrentDirectory(pwd);
         }
     }
     #endregion cmdlets
 
-    public static class Core
+    public static class Linux
     {
         #region dllimport
         [DllImport("libc.so.6", CallingConvention = CallingConvention.Cdecl)]

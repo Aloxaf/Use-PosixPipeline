@@ -1,6 +1,6 @@
-# Use-LinuxPipeline
+# Use-PosixPipeline
 
-[Use-RawPipeline](https://github.com/GeeLaw/PowerShellThingies/tree/master/modules/Use-RawPipeline) 的 Linux 版
+[Use-RawPipeline](https://github.com/GeeLaw/PowerShellThingies/tree/master/modules/Use-RawPipeline) 的 POSIX 版 (说是 POSIX 其实现在只支持 Linux
 
 <s>(pwsh 除了管道艹蛋了点外还是挺香的, 尤其是可读性比 bash 不知道高到哪里去了)</s>
 
@@ -14,7 +14,7 @@ pwsh 的管道只用来传递文件描述符. (简单粗暴
 
 ## 用法 (兼容大部分 Use-RawPipeline 参数)
 
-| bash | PowerShell (with Use-LinuxPipeline) |
+| bash | PowerShell (with Use-PosixPipeline) |
 | --- | --- |
 | `git commit-tree 01d1 -p HEAD < msg` | `stdin msg \| run git commit-tree 01d1 -p HEAD \| 2ps` |
 | `git show HEAD:README.md > temp` | `run git show HEAD:README.md \| out2 temp` |

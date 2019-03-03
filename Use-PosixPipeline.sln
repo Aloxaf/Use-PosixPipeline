@@ -1,7 +1,7 @@
 
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Use-LinuxPipeline", "Use-LinuxPipeline\Use-LinuxPipeline.csproj", "{8527959E-A184-4BB8-A58B-E328410B522C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Use-PosixPipeline", "src\Use-PosixPipeline.csproj", "{8527959E-A184-4BB8-A58B-E328410B522C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
