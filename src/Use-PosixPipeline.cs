@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Management.Automation;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -50,17 +49,18 @@ namespace UsePosixPipeline
 
         protected override void ProcessRecord()
         {
-            string pwd = Directory.GetCurrentDirectory();
+            string directory;
+            //string pwd = Directory.GetCurrentDirectory();
             if (WorkingDirectory == ".")
             {
-                Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
+                directory = SessionState.Path.CurrentFileSystemLocation.Path;
             }
             else
             {
-                Directory.SetCurrentDirectory(WorkingDirectory);
+                directory = WorkingDirectory;
             }
-            WriteObject(Linux.Run(Pipes, Argv, pipeerror, ErrorFile, appenderror));
-            Directory.SetCurrentDirectory(pwd);
+            WriteObject(Linux.Run(Pipes, Argv, pipeerror, ErrorFile, appenderror, directory));
+            //Directory.SetCurrentDirectory(pwd);
         }
     }
 
@@ -87,7 +87,10 @@ namespace UsePosixPipeline
         {
             if (raw)
             {
-                WriteObject(Linux.GetOutputAsBytes(Pipes).ToArray());
+                // NOTE:
+                // 此处省略了 ToArray(), 所以返回的对象被消耗一次后就没了
+                // 第二次尝试迭代就会卡住
+                WriteObject(Linux.GetOutputAsBytes(Pipes));
             }
             else
             {
@@ -114,13 +117,20 @@ namespace UsePosixPipeline
 
         protected override void ProcessRecord()
         {
-            string pwd = Directory.GetCurrentDirectory();
-            Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
-            // WriteObject(SessionState.Path.CurrentFileSystemLocation);
-            Stream fs = new FileStream(Filename, FileMode.Create, FileAccess.Write);
-            Linux.WriteToStream(Pipes, fs);
-            fs.Close();
-            Directory.SetCurrentDirectory(pwd);
+            int pid;
+            if ((pid = Linux.fork()) == -1)
+            {
+                throw new Exception("failed to fork");
+            }
+            if (pid == 0)
+            {
+                Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
+                using (Stream stream = new FileStream(Filename, FileMode.Create, FileAccess.Write))
+                {
+                    Linux.WriteToStream(Pipes, stream);
+                }
+                Linux._exit(0);
+            }
         }
     }
 
@@ -138,12 +148,20 @@ namespace UsePosixPipeline
 
         protected override void ProcessRecord()
         {
-            string pwd = Directory.GetCurrentDirectory();
-            Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
-            Stream fs = new FileStream(Filename, FileMode.Append);
-            Linux.WriteToStream(Pipes, fs);
-            fs.Close();
-            Directory.SetCurrentDirectory(pwd);
+            int pid;
+            if ((pid = Linux.fork()) == -1)
+            {
+                throw new Exception("failed to fork");
+            }
+            if (pid == 0)
+            {
+                Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
+                using (Stream stream = new FileStream(Filename, FileMode.Append))
+                {
+                    Linux.WriteToStream(Pipes, stream);
+                }
+                Linux._exit(0);
+            }
         }
     }
 
@@ -158,10 +176,17 @@ namespace UsePosixPipeline
 
         protected override void ProcessRecord()
         {
-            string pwd = Directory.GetCurrentDirectory();
-            Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
-            WriteObject(Linux.ReadFile(Filename));
-            Directory.SetCurrentDirectory(pwd);
+            int pid;
+            if ((pid = Linux.fork()) == -1)
+            {
+                throw new Exception("failed to fork");
+            }
+            if (pid == 0)
+            {
+                Directory.SetCurrentDirectory(SessionState.Path.CurrentFileSystemLocation.Path);
+                WriteObject(Linux.ReadFile(Filename));
+                Linux._exit(0);
+            }
         }
     }
     #endregion cmdlets
@@ -188,7 +213,7 @@ namespace UsePosixPipeline
         private static extern int execvp(string file, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] argv);
 
         [DllImport("libc.so.6", CallingConvention = CallingConvention.Cdecl)]
-        private static extern int fork();
+        public static extern int fork();
 
         [DllImport("libc.so.6", CallingConvention = CallingConvention.Cdecl)]
         private static extern void perror(string s);
@@ -197,27 +222,34 @@ namespace UsePosixPipeline
         private static extern void exit(int status);
 
         [DllImport("libc.so.6", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void _exit(int status);
+        public static extern void _exit(int status);
 
         #endregion dllimport
 
-        public static int Run(int pipe_in, string[] cmd, bool pipe_error, string error_file, bool append_error)
+        public static int Run(int pipe_in, string[] cmd, bool pipe_error, string error_file, bool append_error, string directory)
         {
             int[] pipe_out = new int[2];
             if (pipe(pipe_out) == -1)
             {
-                perror("bad pipe_out");
-                exit(1);
+                // TODO: 获取失败原因
+                throw new Exception("failed to create pipe");
+                //perror("bad pipe_out");
+                //exit(1);
             }
 
             int pid;
             if ((pid = fork()) == -1)
             {
-                perror("bad fork");
-                exit(1);
+                // TODO: 清理
+                throw new Exception("failed to fork");
+                //perror("bad fork");
+                //exit(1);
             }
-            else if (pid == 0)
+            if (pid == 0)
             {
+                // set working directory
+                Directory.SetCurrentDirectory(directory);
+
                 // set input
                 if (pipe_in != -1)
                 {
@@ -271,7 +303,7 @@ namespace UsePosixPipeline
                     dup2(stderr_bak, 2);
                 }
 
-                _exit(1);
+                _exit(0);
             }
 
             if (pipe_in != -1)
@@ -288,11 +320,16 @@ namespace UsePosixPipeline
             int[] pipe_out = new int[2];
             if (pipe(pipe_out) == -1)
             {
-                perror("bad pipe_out");
-                exit(1);
+                throw new Exception("failed to create pipe");
+                //perror("bad pipe_out");
+                //exit(1);
             }
 
-            int fd = open(filename, 0);
+            int fd;
+            if ((fd = open(filename, 0)) == -1)
+            {
+                throw new Exception(String.Format("failed to open {0}", filename));
+            }
             dup2(fd, pipe_out[0]);
             close(fd);
 
